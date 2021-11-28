@@ -149,6 +149,9 @@
     <ClInclude Include="low_lvl.h" />
     <ClInclude Include="size_and_colours.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
