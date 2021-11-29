@@ -31,7 +31,6 @@ int main(int argl, char* argv[])
     size_t colcnt = 0, last_row_cnt = dir_ens.size() % cols;
     size_t rcnt = dir_ens.size() / cols;
     std::string tmp;
-    //for (const auto& cont : directory_iterator(curr))
     for(size_t i = -1, ps = 0; ps < dir_ens.size(); ++ps, i+= rcnt)
     {
         if (colcnt == 0)
@@ -39,7 +38,12 @@ int main(int argl, char* argv[])
         const auto& cont = dir_ens[i];
         tmp = cont.path().string().substr(currstr.size() + 1);
         if (cont.is_regular_file())
-            cout << reset_console;
+        {
+            if (cont.path().extension().string() == ".exe")
+                cout << green_foreground;
+            else
+                cout << reset_console;
+        }
         else if (cont.is_directory())
             cout << blue_foreground;
         cout << tmp;
