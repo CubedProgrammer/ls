@@ -30,7 +30,7 @@ int main(int argl, char* argv[])
     size_t cols = consz.first / (maxi + 2), rm;
     size_t colcnt = 0, last_row_cnt = dir_ens.size() % cols;
     size_t rcnt = dir_ens.size() / cols;
-    std::string tmp;
+    std::string tmp, ext;
     for(size_t i = -1, ps = 0; ps < dir_ens.size(); ++ps, i+= rcnt)
     {
         if (colcnt == 0)
@@ -39,11 +39,14 @@ int main(int argl, char* argv[])
         tmp = cont.path().string().substr(currstr.size() + 1);
         if (cont.is_regular_file())
         {
-            if (cont.path().extension().string() == ".exe")
+            ext = cont.path().extension().string();
+            if (ext == ".psh" || ext == ".bat" || ext == ".exe")
                 cout << green_foreground;
             else
                 cout << reset_console;
         }
+        else if (cont.is_symlink())
+            cout << cyan_foreground;
         else if (cont.is_directory())
             cout << blue_foreground;
         cout << tmp;
