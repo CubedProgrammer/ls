@@ -1,13 +1,19 @@
+#include<array>
+#include<algorithm>
 #include<filesystem>
 #include<iostream>
+#if __cplusplus >= 202002L
+#include<ranges>
+#endif
 #include"size_and_colours.hpp"
 
-//using std::filesystem::absolute;
 using std::filesystem::directory_entry;
 using std::filesystem::directory_iterator;
 using std::filesystem::path;
 using std::cout;
 using std::endl;
+
+std::array<std::string, 5>archive_exts{ ".7z" , ".zip" , ".tar" , ".tar.gz" , ".jar" };
 
 void print_entry(const directory_entry& cont, const std::string& name)
 {
@@ -16,6 +22,8 @@ void print_entry(const directory_entry& cont, const std::string& name)
         std::string ext = cont.path().extension().string();
         if (ext == ".psh" || ext == ".bat" || ext == ".exe")
             cout << green_foreground;
+        else if (std::find(archive_exts.begin(), archive_exts.end(), ext) != archive_exts.end())
+            cout << red_foreground;
         else
             cout << reset_console;
     }
@@ -38,8 +46,15 @@ int main_pp(std::vector<std::string>& args)
         {
             if (arg[0] == '-')
             {
-                switch (arg[1])
+#if __cplusplus >= 202002L
+                using namespace std::ranges;
+                for (char ch : subrange(arg.begin() + 1, arg.end()))
+#else
+                for (char ch : arg.substr(1))
+#endif
                 {
+                    switch (ch)
+                    {
                     case'x':
                         bycol = false;
                         break;
@@ -47,7 +62,8 @@ int main_pp(std::vector<std::string>& args)
                         dots = true;
                         break;
                     default:
-                        cout << "Unrecognized option -" << arg[1] << endl;
+                        cout << "Unrecognized option -" << ch << endl;
+                    }
                 }
             }
             else
