@@ -10,10 +10,12 @@
 using std::filesystem::directory_entry;
 using std::filesystem::directory_iterator;
 using std::filesystem::path;
+using std::filesystem::recursive_directory_iterator;
 using std::cout;
 using std::endl;
 
 std::array<std::string, 5>archive_exts{ ".7z" , ".zip" , ".tar" , ".tar.gz" , ".jar" };
+std::array<std::string, 5>picture_exts{ ".bmp", ".gif", ".jpg", ".png", ".svg" };
 
 void print_entry(const directory_entry& cont, const std::string& name)
 {
@@ -22,8 +24,12 @@ void print_entry(const directory_entry& cont, const std::string& name)
         std::string ext = cont.path().extension().string();
         if (ext == ".psh" || ext == ".bat" || ext == ".exe")
             cout << green_foreground;
+        else if(ext == ".lnk")
+            cout << cyan_foreground;
         else if (std::find(archive_exts.begin(), archive_exts.end(), ext) != archive_exts.end())
             cout << red_foreground;
+        else if (std::find(picture_exts.begin(), picture_exts.end(), ext) != picture_exts.end())
+            cout << magenta_foreground;
         else
             cout << reset_console;
     }
@@ -40,6 +46,8 @@ int main_pp(std::vector<std::string>& args)
     auto consz = get_console_size_cpp();
     std::string currstr = ".";
     bool bycol = true, dots = false;
+    bool rev = false;
+    bool recurse = false;
     if (args.size() != 0)
     {
         for (const auto& arg : args)
@@ -61,6 +69,12 @@ int main_pp(std::vector<std::string>& args)
                     case'a':
                         dots = true;
                         break;
+                    case'r':
+                        rev = true;
+                        break;
+                    case'R':
+                        recurse = true;
+                        break;
                     default:
                         cout << "Unrecognized option -" << ch << endl;
                     }
@@ -80,11 +94,24 @@ int main_pp(std::vector<std::string>& args)
         dir_ens.push_back(directory_entry{ currstr + "\\." });
         dir_ens.push_back(directory_entry{ currstr + "\\.." });
     }
-    for (const auto& cont : directory_iterator(curr))
+    if (recurse)
     {
-        maxi = std::max(maxi, cont.path().string().size());
-        dir_ens.push_back(cont);
+        for (const auto& cont : recursive_directory_iterator(curr))
+        {
+            maxi = std::max(maxi, cont.path().string().size());
+            dir_ens.push_back(cont);
+        }
     }
+    else
+    {
+        for (const auto& cont : directory_iterator(curr))
+        {
+            maxi = std::max(maxi, cont.path().string().size());
+            dir_ens.push_back(cont);
+        }
+    }
+    if (rev)
+        std::reverse(dir_ens.begin(), dir_ens.end());
     maxi -= currstr.size() + 1;
     size_t cols = consz.first / (maxi + 2), rm;
     size_t colcnt = 0, last_row_cnt = dir_ens.size() % cols;
