@@ -2,26 +2,27 @@
 #include<algorithm>
 #include<filesystem>
 #include<iostream>
-#if __cplusplus >= 202002L
 #include<ranges>
-#endif
 #include"size_and_colours.hpp"
 
 using std::filesystem::directory_entry;
 using std::filesystem::directory_iterator;
 using std::filesystem::path;
 using std::filesystem::recursive_directory_iterator;
+using std::ranges::copy;
+using std::ranges::max_element;
+using std::views::transform;
 using std::cout;
 using std::endl;
 
 std::array<std::string, 5>archive_exts{ ".7z" , ".zip" , ".tar" , ".tar.gz" , ".jar" };
 std::array<std::string, 5>picture_exts{ ".bmp", ".gif", ".jpg", ".png", ".svg" };
 
-void print_entry(const directory_entry& cont, const std::string& name)
+void print_entry(const path& cont)
 {
-    if (cont.is_regular_file())
+    if (is_regular_file(cont))
     {
-        std::string ext = cont.path().extension().string();
+        std::string ext = cont.extension().string();
         if (ext == ".psh" || ext == ".bat" || ext == ".exe")
             cout << green_foreground;
         else if(ext == ".lnk")
@@ -33,11 +34,47 @@ void print_entry(const directory_entry& cont, const std::string& name)
         else
             cout << reset_console;
     }
-    else if (cont.is_symlink())
+    else if (is_symlink(cont))
         cout << cyan_foreground;
-    else if (cont.is_directory())
+    else if (is_directory(cont))
         cout << blue_foreground;
-    cout << name;
+    cout << cont.string();
+}
+
+void display_entries(std::pair<int, int>consz, bool bycol, const std::vector<directory_entry>& dens)
+{
+    using namespace std::views;
+    auto ens = dens | transform([](const directory_entry& entry) {return entry.path().filename().string(); });
+    size_t maxi = (*max_element(ens, std::ranges::less{}, [](const std::string& entry) {return entry.size(); })).size();
+    size_t cols = consz.first / (maxi + 2), rm;
+    size_t last_row_cnt = ens.size() % cols;
+    size_t rcnt = ens.size() / cols;
+    std::string tmp;
+    if (bycol)
+    {
+        for (auto r : iota(static_cast<size_t>(0), rcnt))
+        {
+            for (std::string cont : stride(drop(ens, r), rcnt))
+            {
+                print_entry(path(cont));
+                cout << std::string(maxi + 2 - cont.size(), ' ');
+            }
+            endl(cout);
+        }
+    }
+    else
+    {
+        for (auto r : chunk(ens, cols))
+        {
+            for (std::string cont : r)
+            {
+                print_entry(path(cont));
+                cout << std::string(maxi + 2 - cont.size(), ' ');
+            }
+            endl(cout);
+        }
+    }
+    cout << reset_console;
 }
 
 int main_pp(std::vector<std::string>& args)
@@ -54,12 +91,8 @@ int main_pp(std::vector<std::string>& args)
         {
             if (arg[0] == '-')
             {
-#if __cplusplus >= 202002L
-                using namespace std::ranges;
-                for (char ch : subrange(arg.begin() + 1, arg.end()))
-#else
-                for (char ch : arg.substr(1))
-#endif
+                using std::views::drop;
+                for (char ch : arg | drop(1))
                 {
                     switch (ch)
                     {
@@ -87,7 +120,6 @@ int main_pp(std::vector<std::string>& args)
     path curr = currstr;
     if (currstr.back() == '\\')
         currstr = currstr.substr(0, currstr.size() - 1);
-    size_t maxi = 0;
     std::vector<directory_entry>dir_ens;
     if (dots)
     {
@@ -95,77 +127,12 @@ int main_pp(std::vector<std::string>& args)
         dir_ens.push_back(directory_entry{ currstr + "\\.." });
     }
     if (recurse)
-    {
-        for (const auto& cont : recursive_directory_iterator(curr))
-        {
-            maxi = std::max(maxi, cont.path().string().size());
-            dir_ens.push_back(cont);
-        }
-    }
+        copy(recursive_directory_iterator(curr), std::back_inserter(dir_ens));
     else
-    {
-        for (const auto& cont : directory_iterator(curr))
-        {
-            maxi = std::max(maxi, cont.path().string().size());
-            dir_ens.push_back(cont);
-        }
-    }
+        copy(directory_iterator(curr), std::back_inserter(dir_ens));
     if (rev)
-        std::reverse(dir_ens.begin(), dir_ens.end());
-    maxi -= currstr.size() + 1;
-    size_t cols = consz.first / (maxi + 2), rm;
-    size_t colcnt = 0, last_row_cnt = dir_ens.size() % cols;
-    size_t rcnt = dir_ens.size() / cols;
-    std::string tmp;
-    if (bycol)
-    {
-        for (size_t i = -1, ps = 0; ps < dir_ens.size(); ++ps, i += rcnt)
-        {
-            if (colcnt == 0)
-                i = (i + 1) % dir_ens.size();
-            const auto& cont = dir_ens[i];
-            tmp = cont.path().string().substr(currstr.size() + 1);
-            print_entry(cont, tmp);
-            if (colcnt < last_row_cnt)
-                ++i;
-            if (colcnt == cols - 1)
-            {
-                cout << '\n';
-                colcnt = -1;
-            }
-            else
-            {
-                rm = maxi + 2 - tmp.size();
-                for (size_t i = 0; i < rm; i++)
-                    cout << ' ';
-            }
-            ++colcnt;
-        }
-    }
-    else
-    {
-        for (size_t ps = 0; ps < dir_ens.size(); ++ps)
-        {
-            const auto& cont = dir_ens[ps];
-            tmp = cont.path().string().substr(currstr.size() + 1);
-            print_entry(cont, tmp);
-            if (colcnt == cols - 1)
-            {
-                cout << '\n';
-                colcnt = -1;
-            }
-            else
-            {
-                rm = maxi + 2 - tmp.size();
-                for (size_t i = 0; i < rm; i++)
-                    cout << ' ';
-            }
-            ++colcnt;
-        }
-    }
-    cout << reset_console;
-    if (colcnt != 0)
-        endl(cout);
+        std::ranges::reverse(dir_ens);
+    display_entries(consz, bycol, dir_ens);
     return 0;
 }
 
